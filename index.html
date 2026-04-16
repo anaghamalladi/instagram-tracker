@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Instagram Tracker</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 500px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #fafafa;
+    }
+
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 24px;
+      color: #333;
+    }
+
+    .activity-card {
+      background: white;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .activity-name {
+      font-size: 16px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .activity-time {
+      font-size: 20px;
+      font-weight: 600;
+      color: #555;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    .start-btn {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 8px;
+      background: #e1306c;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .start-btn.active {
+      background: #333;
+    }
+    
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <h1>Instagram Tracker</h1>
+  <div style="background: white; border: 1px solid #eee; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;">
+  <p style="font-size: 14px; font-weight: 500; color: #333; margin-bottom: 12px;">Set Daily Limits (minutes)</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+    <div>
+      <label style="font-size: 12px; color: #888;">Reels</label>
+      <input type="number" id="limit-reels" value="5" min="1" onchange="updateLimit('reels', this.value)"
+        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-top: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; color: #888;">Messages</label>
+      <input type="number" id="limit-messages" value="5" min="1" onchange="updateLimit('messages', this.value)"
+        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-top: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; color: #888;">Posts</label>
+      <input type="number" id="limit-posts" value="5" min="1" onchange="updateLimit('posts', this.value)"
+        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-top: 4px;">
+    </div>
+    <div>
+      <label style="font-size: 12px; color: #888;">Stories</label>
+      <input type="number" id="limit-stories" value="5" min="1" onchange="updateLimit('stories', this.value)"
+        style="width: 100%; padding: 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-top: 4px;">
+    </div>
+  </div>
+</div>
+
+  <div class="activity-card">
+    <span class="activity-name">Reels</span>
+    <span class="activity-time" id="time-reels">00:00</span>
+    <button class="start-btn" id="btn-reels" onclick="toggle('reels')">Start</button>
+  </div>
+
+  <div class="activity-card">
+    <span class="activity-name">Messages</span>
+    <span class="activity-time" id="time-messages">00:00</span>
+    <button class="start-btn" id="btn-messages" onclick="toggle('messages')">Start</button>
+  </div>
+
+  <div class="activity-card">
+    <span class="activity-name">Posts</span>
+    <span class="activity-time" id="time-posts">00:00</span>
+    <button class="start-btn" id="btn-posts" onclick="toggle('posts')">Start</button>
+  </div>
+
+  <div class="activity-card">
+    <span class="activity-name">Stories</span>
+    <span class="activity-time" id="time-stories">00:00</span>
+    <button class="start-btn" id="btn-stories" onclick="toggle('stories')">Start</button>
+  </div>
+
+  <script>
+    const timers = {
+      reels:    { seconds: 0, interval: null, running: false },
+      messages: { seconds: 0, interval: null, running: false },
+      posts:    { seconds: 0, interval: null, running: false },
+      stories:  { seconds: 0, interval: null, running: false }
+    };
+    const limits = {
+      reels: 300,
+      messages: 300,
+      posts: 300,
+      stories: 300
+    };
+    function updateLimit(activity, value) {
+  limits[activity] = parseInt(value) * 60;
+}
+    function saveSession(activity, seconds) {
+  if (seconds === 0) return;
+    
+  const sessions = JSON.parse(localStorage.getItem('ig-sessions') || '[]');
+  sessions.push({
+    activity: activity,
+    seconds: seconds,
+    date: new Date().toLocaleDateString()
+  });
+  localStorage.setItem('ig-sessions', JSON.stringify(sessions));
+}
+
+    function toggle(activity) {
+      const timer = timers[activity];
+      const btn = document.getElementById('btn-' + activity);
+
+      if (timer.running) {
+        clearInterval(timer.interval);
+        timer.running = false;
+        btn.textContent = 'Start';
+        btn.classList.remove('active');
+        saveSession(activity, timer.seconds);
+      } else {
+        timer.interval = setInterval(() => {
+          timer.seconds++;
+          document.getElementById('time-' + activity).textContent = formatTime(timer.seconds);
+          if (timer.seconds === limits[activity]) {
+            alert('⚠️ You have spent ' + formatTime(limits[activity]) + ' on ' + activity + ' today!');
+          }
+        }, 1000);
+        timer.running = true;
+        btn.textContent = 'Stop';
+        btn.classList.add('active');
+      }
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return m + ':' + s;
+    }
+    function showSummary() {
+  const sessions = JSON.parse(localStorage.getItem('ig-sessions') || '[]');
+  const today = new Date().toLocaleDateString();
+  const totals = { reels: 0, messages: 0, posts: 0, stories: 0 };
+
+  sessions
+    .filter(s => s.date === today)
+    .forEach(s => totals[s.activity] += s.seconds);
+
+  const div = document.getElementById('summary');
+  div.innerHTML = Object.entries(totals).map(([activity, seconds]) => `
+    <div style="background:white; border:1px solid #eee; border-radius:10px; padding:12px 16px; margin-bottom:8px; display:flex; justify-content:space-between;">
+      <span style="text-transform:capitalize; font-weight:500;">${activity}</span>
+      <span style="color:#e1306c; font-weight:600;">${formatTime(seconds)}</span>
+    </div>
+  `).join('');
+  const ctx = document.getElementById('myChart').getContext('2d');
+
+  if (window.myChartInstance) {
+    window.myChartInstance.destroy();
+  }
+
+  window.myChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Reels', 'Messages', 'Posts', 'Stories'],
+      datasets: [{
+        label: 'Seconds today',
+        data: [totals.reels, totals.messages, totals.posts, totals.stories],
+        backgroundColor: ['#e1306c', '#833ab4', '#fd1d1d', '#fcb045'],
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+function resetToday() {
+  const confirmed = confirm("Reset all of today's data?");
+  if (!confirmed) return;
+
+  const sessions = JSON.parse(localStorage.getItem('ig-sessions') || '[]');
+  const today = new Date().toLocaleDateString();
+  const filtered = sessions.filter(s => s.date !== today);
+  localStorage.setItem('ig-sessions', JSON.stringify(filtered));
+
+  Object.keys(timers).forEach(activity => {
+    timers[activity].seconds = 0;
+    timers[activity].running = false;
+    clearInterval(timers[activity].interval);
+    document.getElementById('time-' + activity).textContent = '00:00';
+    document.getElementById('btn-' + activity).textContent = 'Start';
+    document.getElementById('btn-' + activity).classList.remove('active');
+  });
+
+  document.getElementById('summary').innerHTML = '';
+  if (window.myChartInstance) {
+    window.myChartInstance.destroy();
+  }
+}
+function showHistory() {
+  const sessions = JSON.parse(localStorage.getItem('ig-sessions') || '[]');
+  
+  const last7Days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    last7Days.push(d.toLocaleDateString());
+  }
+
+  const activities = ['reels', 'messages', 'posts', 'stories'];
+  const colors = ['#e1306c', '#833ab4', '#fd1d1d', '#fcb045'];
+
+  const datasets = activities.map((activity, i) => ({
+    label: activity.charAt(0).toUpperCase() + activity.slice(1),
+    data: last7Days.map(date =>
+      sessions
+        .filter(s => s.date === date && s.activity === activity)
+        .reduce((sum, s) => sum + s.seconds, 0)
+    ),
+    backgroundColor: colors[i],
+    borderRadius: 6
+  }));
+
+  const historyDiv = document.getElementById('history-chart');
+  historyDiv.style.display = 'block';
+
+  if (window.historyChartInstance) {
+    window.historyChartInstance.destroy();
+  }
+
+  window.historyChartInstance = new Chart(
+    document.getElementById('historyCanvas').getContext('2d'), {
+    type: 'bar',
+    data: { labels: last7Days, datasets },
+    options: {
+      responsive: true,
+      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+}
+  </script>
+<h2 style="margin-top: 32px; font-size: 18px; color: #333;">Today's Summary</h2>
+<canvas id="myChart" style="margin-top: 24px;"></canvas>
+<div id="history-chart" style="display:none; margin-top: 32px;">
+  <h2 style="font-size: 18px; color: #333; margin-bottom: 12px;">Last 7 Days</h2>
+  <canvas id="historyCanvas"></canvas>
+</div>
+<div id="summary" style="margin-top: 12px;"></div>
+
+<button onclick="showSummary()" style="margin-top: 16px; padding: 10px 20px; background: #833ab4; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer;">
+  Show Summary
+<button onclick="resetToday()" style="margin-top: 10px; padding: 10px 20px; background: white; color: #e1306c; border: 1px solid #e1306c; border-radius: 8px; font-size: 14px; cursor: pointer;">
+  Reset Today
+<button onclick="showHistory()" style="margin-top: 10px; padding: 10px 20px; background: white; color: #833ab4; border: 1px solid #833ab4; border-radius: 8px; font-size: 14px; cursor: pointer;">
+  7-Day History
+</button>
+</button>
+</button>
+</body>
+</html>
